@@ -1,0 +1,31 @@
+吕鑫  2014011298
+李永斌 2014011442
+
+该文件为简要工程说明
+
+主文件夹：
+model_COCO.py 核心模块，构建了训练网络模型（build_model）和句子生成模型(build_generator)
+test_COCO.py 测试模块，利用训练好的模型将输入图像解释为句子（captioning）
+cnn_util.py 图片预处理，将输入图片调整为合适大小（224*224）作为Vgg16的输入
+conf.py 配置模块，定义了训练模型各个参数、存储路径等配置信息
+train.py 训练运行脚本，运行python train.py 可直接按conf.py参数进行训练（需要含有数据集，并且conf各个路径正确）
+crop.py 为测试模块，可以生成Bleu等评价指标
+
+-data文件夹：
+ 该文件夹含训练集、测试集等数据
+
+-models
+ 该文件夹为训练好的模型
+
+
+VGG采用了Tensorflow的vgg16.tfmodel模型
+
+若所有文件都配置正确，且有相关训练数据，则可以运行
+python train.py
+来进行训练
+
+运行
+python real_judge.py
+来进行测试
+
+调用test_COCO中的captioning函数来获取某张图片的描述
