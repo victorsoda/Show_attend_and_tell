@@ -3,6 +3,9 @@ import skimage
 import pylab
 import skimage.io
 from PIL import Image
+import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "5, 6, 7, 8"
 
 with open(vgg_path) as f:
     fileContent = f.read()
@@ -26,15 +29,27 @@ caption_generator = Caption_Generator(
     dim_embed=dim_embed,
     batch_size=batch_size,
     n_lstm_steps=test_maxlen + 2,
-    n_words=n_words
-                    )
+    n_words=n_words,
+    hard_attetion=False                )
 
 graph = tf.get_default_graph()
 
-fc7_tf, generated_words_tf, alpha_list, h_list, hatt_list, out_list = caption_generator.build_generator(maxlen=test_maxlen)
+# fc7_tf, generated_words_tf, alpha_list, h_list, hatt_list, out_list = caption_generator.build_generator(maxlen=test_maxlen)
+fc7_tf, generated_words_tf, alpha_list = caption_generator.build_generator(maxlen=test_maxlen)
+
+# from tensorflow.core.protobuf import saver_pb2
+# saver = tf.train.Saver(write_version = saver_pb2.SaverDef.V1)
+# saver.restore(sess, model_path)
+
+# saver = tf.train.import_meta_graph(os.path.join(model_path, 'model-105.meta'))
+# saver.restore(sess, tf.train.latest_checkpoint(model_path))
 
 saver = tf.train.Saver()
-saver.restore(sess, model_path)
+saved_path = tf.train.latest_checkpoint(model_path)
+saver.restore(sess, saved_path)
+
+# captioning('./giraffe.jpg')
+
 
 def get_attend_image(image_path, alpha_in, rank):
     src_image = Image.open(image_path)
@@ -65,15 +80,23 @@ def get_attend_image(image_path, alpha_in, rank):
 
 
 def captioning(test_image_path=None):
+    '''    
+    mylist = graph.get_operations()
+    import pprint
+    pp = pprint.PrettyPrinter()
+    pp.pprint(mylist)
+    exit(1234)
+    '''
 
     image_val = read_image(test_image_path)
 
-    fc7 = sess.run(graph.get_tensor_by_name("import/conv5_3/conv5_3:0"), feed_dict={images: image_val})
-    fc7 = fc7.reshape(1, 196, 512)
+    fc7 = sess.run(graph.get_tensor_by_name("import/conv5_3/Conv2D:0"), feed_dict={images: image_val})
+    fc7 = fc7.reshape(1, 8, 512)
 
 
-    generated_word_index, alpha_out, h_out, hatt_out, out = sess.run([generated_words_tf,alpha_list,h_list,hatt_list,out_list], feed_dict={fc7_tf: fc7})
-
+    # generated_word_index, alpha_out, h_out, hatt_out, out = sess.run([generated_words_tf,alpha_list,h_list,hatt_list,out_list], feed_dict={fc7_tf: fc7})
+    generated_word_index, alpha_out = sess.run(
+        [generated_words_tf, alpha_list], feed_dict={fc7_tf: fc7})
     generated_word_index = np.hstack(generated_word_index)
 
 
@@ -92,3 +115,8 @@ def captioning(test_image_path=None):
 
     print generated_sentence
     return generated_sentence
+
+
+captioning('./giraffe.jpg')
+
+

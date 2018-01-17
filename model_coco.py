@@ -11,6 +11,7 @@ from keras.preprocessing import sequence
 from collections import Counter
 from crop import *
 import time
+import datetime
 
 
 class Caption_Generator():
@@ -45,7 +46,7 @@ class Caption_Generator():
             # 词特征偏置
             self.bemb = self.init_bias(dim_embed, name='bemb')
         # 建立LSTM CELL
-        self.lstm = tf.nn.rnn_cell.BasicLSTMCell(num_units=dim_hidden)
+        self.lstm = tf.contrib.rnn.BasicLSTMCell(num_units=dim_hidden)
 
     def build_model(self):
         """
@@ -89,7 +90,7 @@ class Caption_Generator():
 
                 with tf.variable_scope('lstm', reuse=(i != 0)):
                     # 将注意力和词特征级联输入LSTM
-                    output, (c, h) = self.lstm(inputs=tf.concat(1, [current_emb, image_context]),
+                    output, (c, h) = self.lstm(inputs=tf.concat([current_emb, image_context], 1),
                                                state=[c, h])
                 # 利用隐藏层输出h，获取当前时刻的词索引
                 logit_words = self._decode_lstm(h, dropout=True, reuse=(i != 0))
@@ -98,11 +99,11 @@ class Caption_Generator():
                     # 将label的词索引转为one_hot编码
                     labels = tf.expand_dims(sentence[:, i], 1)  # (batch_size)
                     indices = tf.expand_dims(tf.range(0, self.batch_size, 1), 1)
-                    concated = tf.concat(1, [indices, labels])
+                    concated = tf.concat([indices, labels], 1)
                     onehot_labels = tf.sparse_to_dense(
-                        concated, tf.pack([self.batch_size, self.n_words]), 1.0, 0.0)  # (batch_size, n_words)
+                        concated, tf.stack([self.batch_size, self.n_words]), 1.0, 0.0)  # (batch_size, n_words)
                     # 计算cross_loss
-                    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logit_words, onehot_labels)
+                    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logit_words, labels=onehot_labels)
                     # 根据每个实际句子的长度截取loss
                     cross_entropy = cross_entropy * mask[:, i]
 
@@ -157,7 +158,7 @@ class Caption_Generator():
             w = tf.get_variable('w', [self.dim_hidden, 1], initializer=self.weight_initializer)
             b = tf.get_variable('b', [1], initializer=self.const_initializer)
             beta = tf.nn.sigmoid(tf.matmul(h, w) + b, 'beta')  # (N, 1)
-            context = tf.mul(beta, context, name='selected_context')
+            context = tf.multiply(beta, context, name='selected_context')
             return context, beta
 
     def _attention_layer(self, features, features_proj, h, reuse=False):
@@ -194,7 +195,7 @@ class Caption_Generator():
                 # hard-attention
                 max_index = tf.cast(tf.expand_dims(tf.argmax(alpha, 1), 1), dtype=tf.int32)  # N*1
                 index = tf.expand_dims(tf.range(0, self.batch_size), 1)
-                concated = tf.concat(1, [index, max_index])
+                concated = tf.concat([index, max_index], 1)
                 out_shape = tf.pack([self.batch_size, self.dim_image_L])
                 alpha_hard = tf.sparse_to_dense(concated, out_shape,1.0, 0.0)
                 # 图像特征的加权求和,alpha_hard为[0,0,0,....,1,...,0,0,0,0]的形式
@@ -263,7 +264,7 @@ class Caption_Generator():
                     current_emb = first_word
 
                 with tf.variable_scope('lstm', reuse=(i != 0)):
-                    output, (c, h) = self.lstm(inputs=tf.concat(1, [current_emb, image_context]), state=[c, h])
+                    output, (c, h) = self.lstm(inputs=tf.concat([current_emb, image_context], 1), state=[c, h])
 
                 # 解码词索引概率分布
                 logit_words = self._decode_lstm(h, dropout=False, reuse=(i != 0))
@@ -323,8 +324,15 @@ def preProBuildWordVocab(sentence_iterator, word_count_threshold=30):  # borrowe
 def train():
     learning_rate = 0.001
     momentum = 0.9
+    training_size = 40000
+    
     feats, captions = get_caption_data(annotation_path, feat_path)
+    feats = feats[:training_size]
+    captions = captions[:training_size]
+    
     wordtoix, ixtoword, bias_init_vector = preProBuildWordVocab(captions)
+    tmp = feats.shape
+    feats = feats.reshape((tmp[0], tmp[2]))
 
     np.save('data/ixtoword_COCO', ixtoword)
 
@@ -346,7 +354,8 @@ def train():
         dim_embed=dim_embed,
         batch_size=batch_size,
         n_lstm_steps=max_len + 2,
-        n_words=n_words
+        n_words=n_words,
+        hard_attetion=False
         )
 
     loss, image, sentence, mask = caption_generator.build_model()
@@ -408,7 +417,7 @@ def train():
 
             rate = float(start) * 100 / len(feats)
             rate = round(rate, 2)
-            print "Epoch", epoch, "is training,", '%.2f' % rate, '%' + ' complete.', "Current Cost:", loss_value
+            print str(datetime.datetime.now())[:-7], "Epoch", epoch, ",", '%.2f' % rate, '%' + ' complete.', "Current Cost:", loss_value
 
         print "Epoch ", epoch, " is done." + " Used time " + str(time.time() - start_t) + " Saving the model ... "
         saver.save(sess, os.path.join(model_path, 'model'), global_step=epoch)
