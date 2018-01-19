@@ -90,8 +90,8 @@ def captioning(test_image_path=None):
 
     image_val = read_image(test_image_path)
 
-    fc7 = sess.run(graph.get_tensor_by_name("import/conv5_3/Conv2D:0"), feed_dict={images: image_val})
-    fc7 = fc7.reshape(1, 8, 512)
+    fc7 = sess.run(graph.get_tensor_by_name("import/conv5_3/conv5_3:0"), feed_dict={images: image_val})
+    fc7 = fc7.reshape(1, 196, 512)
 
 
     # generated_word_index, alpha_out, h_out, hatt_out, out = sess.run([generated_words_tf,alpha_list,h_list,hatt_list,out_list], feed_dict={fc7_tf: fc7})

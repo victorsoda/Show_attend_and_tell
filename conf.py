@@ -4,7 +4,9 @@ import os
 # 输入图像位置数量
 dim_image_L = 8
 # 输入图像通道特征数量
-dim_image_D = 512
+#dim_image_D = 512
+dim_image_D = 256
+
 # 词特征向量维度
 dim_embed = 512
 # LSTM隐藏层维度
@@ -22,16 +24,20 @@ test_maxlen = 30
 CUT = 0.5
 
 # 训练时模型的存储/加载路径
-model_path = './models/tensorflow_COCO'
+#model_path = './models/tensorflow_COCO'
+model_path = './models/r152_tensorflow_COCO'
+
 # vgg16 模型路径
 vgg_path = './data/vgg16.tfmodel'
 # 训练集路径
 data_path = './data'
 
 # 用vgg16 预先提取的图像特征路径
-feat_path = './data/COCO_feats.npy'
+#feat_path = './data/COCO_feats.npy'
+feat_path = './data/feats_resnet152.npy'
+
 # 训练时模型的存储/加载路径
-checkpoint_dir = './models/tensorflow_COCO'
+checkpoint_dir = model_path # './models/tensorflow_COCO'
 
 annotation_path = os.path.join(data_path, 'caption_2.txt')
 # log路径

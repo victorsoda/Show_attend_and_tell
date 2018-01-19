@@ -322,9 +322,9 @@ def preProBuildWordVocab(sentence_iterator, word_count_threshold=30):  # borrowe
 
 
 def train():
-    learning_rate = 0.001
-    momentum = 0.9
-    training_size = 40000
+    learning_rate = 0.0001
+    momentum = 0.0
+    training_size = 80000
     
     feats, captions = get_caption_data(annotation_path, feat_path)
     feats = feats[:training_size]
